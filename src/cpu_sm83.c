@@ -161,8 +161,14 @@ uint8_t DEC_r8(cpu_sm83 *cpu, uint8_t *r8) {
 	return 4;
 }
 
-uint8_t DEC_r16(cpu_sm83 *cpu, uint16_t *r16) {
-	(*r16)--;
+uint8_t DEC_r16(cpu_sm83 *cpu, register_ *r16) {
+	(r16->full)--;
+
+	return 8;
+}
+
+uint8_t DEC_SP(cpu_sm83 *cpu) {
+	cpu->SP--;
 
 	return 8;
 }
@@ -477,6 +483,16 @@ uint8_t CPL(cpu_sm83 *cpu) {
 	return 4;
 }
 
+uint8_t LD_a16_A(cpu_sm83 *cpu, uint16_t a16) {
+	bus_write(cpu->bus, a16, *cpu->A);
+	return 16;
+}
+
+uint8_t LDH_a16_A(cpu_sm83 *cpu, uint16_t a16) {
+	bus_write(cpu->bus, a16 | 0xFF, *cpu->A);
+	return 16;
+}
+
 uint8_t BIT_u3_r8(cpu_sm83 *cpu, uint8_t u3, uint8_t *r8) {
 	cpu_sm83_set_flag(cpu,
 	   !(*r8 & (1 << u3)),
@@ -548,94 +564,102 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return NOP();
 		case 0x01:
 			return LD_r16_n16(cpu, &cpu->BC, fetch16(cpu));
-		case 0x11:
-			return LD_r16_n16(cpu, &cpu->DE, fetch16(cpu));
-		case 0x21:
-			return LD_r16_n16(cpu, &cpu->HL, fetch16(cpu));
-		case 0x31:
-			return LD_SP_n16(cpu, fetch16(cpu));
 		case 0x02:
 			return LD_r16_A(cpu, &cpu->BC);
-		case 0x12:
-			return LD_r16_A(cpu, &cpu->DE);
+		case 0x03:
+			return INC_r16(cpu, &cpu->BC.full);
+		case 0x04:
+			return INC_r8(cpu, cpu->B);
+		case 0x05:
+			return DEC_r8(cpu, cpu->B);
+		case 0x06:
+			return LD_r8_n8(cpu, cpu->B, fetch8(cpu));
 		case 0x0A:
 			return LD_A_addr_r16(cpu, cpu->BC);
+		case 0x0B:
+			return DEC_r16(cpu, &cpu->BC);
+		case 0x0C:
+			return INC_r8(cpu, cpu->C);
+		case 0x0D:
+			return DEC_r8(cpu, cpu->C);
+		case 0x0E:
+			return LD_r8_n8(cpu, cpu->C, fetch8(cpu));
+		case 0x11:
+			return LD_r16_n16(cpu, &cpu->DE, fetch16(cpu));
+		case 0x12:
+			return LD_r16_A(cpu, &cpu->DE);
+		case 0x13:
+			return INC_r16(cpu, &cpu->DE.full);
+		case 0x14:
+			return INC_r8(cpu, cpu->D);
+		case 0x15:
+			return DEC_r8(cpu, cpu->D);
+		case 0x16:
+			return LD_r8_n8(cpu, cpu->D, fetch8(cpu));
 		case 0x1A:
 			return LD_A_addr_r16(cpu, cpu->DE);
+		case 0x1B:
+			return DEC_r16(cpu, &cpu->DE);
+		case 0x1C:
+			return INC_r8(cpu, cpu->E);
+		case 0x1D:
+			return DEC_r8(cpu, cpu->E);
+		case 0x1E:
+			return LD_r8_n8(cpu, cpu->E, fetch8(cpu));
+		case 0x20:
+			return JR_cc_e8(cpu, !cpu_sm83_get_flag_z(cpu), fetch8(cpu));
+		case 0x21:
+			return LD_r16_n16(cpu, &cpu->HL, fetch16(cpu));
+		case 0x22:
+			return LD_HLI_A(cpu);
+		case 0x23:
+			return INC_r16(cpu, &cpu->HL.full);
+		case 0x24:
+			return INC_r8(cpu, cpu->H);
+		case 0x25:
+			return DEC_r8(cpu, cpu->H);
+		case 0x26:
+			return LD_r8_n8(cpu, cpu->H, fetch8(cpu));
 		case 0x2A: {
 			uint8_t cycles = LD_A_addr_r16(cpu, cpu->HL);
 			cpu->HL.full++;
 			return cycles;
 		}
+		case 0x2B:
+			return DEC_r16(cpu, &cpu->HL);
+		case 0x2C:
+			return INC_r8(cpu, cpu->L);
+		case 0x2D:
+			return DEC_r8(cpu, cpu->L);
+		case 0x2E:
+			return LD_r8_n8(cpu, cpu->L, fetch8(cpu));
+		case 0x2F:
+			return CPL(cpu);
+		case 0x30:
+			return JR_cc_e8(cpu, !cpu_sm83_get_flag_c(cpu), fetch8(cpu));
+		case 0x31:
+			return LD_SP_n16(cpu, fetch16(cpu));
+		case 0x32:
+			return LD_HLD_A(cpu);
+		case 0x33:
+			return INC_r16(cpu, &cpu->SP);
+		case 0x34:
+			return INC_addr_HL(cpu);
+		case 0x35:
+			return DEC_addr_HL(cpu);
 		case 0x3A: {
 			uint8_t cycles = LD_A_addr_r16(cpu, cpu->HL);
 			cpu->HL.full--;
 			return cycles;
 		}
-		case 0x20:
-			return JR_cc_e8(cpu, !cpu_sm83_get_flag_z(cpu), fetch8(cpu));
-		case 0x30:
-			return JR_cc_e8(cpu, !cpu_sm83_get_flag_c(cpu), fetch8(cpu));
-		case 0x22:
-			return LD_HLI_A(cpu);
-		case 0x32:
-			return LD_HLD_A(cpu);
-		case 0x0E:
-			return LD_r8_n8(cpu, cpu->C, fetch8(cpu));
-		case 0x1E:
-			return LD_r8_n8(cpu, cpu->E, fetch8(cpu));
-		case 0x2E:
-			return LD_r8_n8(cpu, cpu->L, fetch8(cpu));
-		case 0x3E:
-			return LD_r8_n8(cpu, cpu->A, fetch8(cpu));
-		case 0x06:
-			return LD_r8_n8(cpu, cpu->B, fetch8(cpu));
-		case 0x16:
-			return LD_r8_n8(cpu, cpu->D, fetch8(cpu));
-		case 0x26:
-			return LD_r8_n8(cpu, cpu->H, fetch8(cpu));
-		case 0x04:
-			return INC_r8(cpu, cpu->B);
-		case 0x14:
-			return INC_r8(cpu, cpu->D);
-		case 0x24:
-			return INC_r8(cpu, cpu->H);
-		case 0x34:
-			return INC_addr_HL(cpu);
-		case 0x0C:
-			return INC_r8(cpu, cpu->C);
-		case 0x1C:
-			return INC_r8(cpu, cpu->E);
-		case 0x2C:
-			return INC_r8(cpu, cpu->L);
+		case 0x3B:
+			return DEC_SP(cpu);
 		case 0x3C:
 			return INC_r8(cpu, cpu->A);
-		case 0x03:
-			return INC_r16(cpu, &cpu->BC.full);
-		case 0x13:
-			return INC_r16(cpu, &cpu->DE.full);
-		case 0x23:
-			return INC_r16(cpu, &cpu->HL.full);
-		case 0x33:
-			return INC_r16(cpu, &cpu->SP);
-		case 0x05:
-			return DEC_r8(cpu, cpu->B);
-		case 0x15:
-			return DEC_r8(cpu, cpu->D);
-		case 0x25:
-			return DEC_r8(cpu, cpu->H);
-		case 0x35:
-			return DEC_addr_HL(cpu);
-		case 0x0D:
-			return DEC_r8(cpu, cpu->C);
-		case 0x1D:
-			return DEC_r8(cpu, cpu->E);
-		case 0x2D:
-			return DEC_r8(cpu, cpu->L);
-		case 0x2F:
-			return CPL(cpu);
 		case 0x3D:
 			return DEC_r8(cpu, cpu->A);
+		case 0x3E:
+			return LD_r8_n8(cpu, cpu->A, fetch8(cpu));
 		case 0x40:
 			return LD_r8_r8(cpu, cpu->B, cpu->B);
 		case 0x41:
@@ -796,12 +820,6 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return CP_A_addr_HL(cpu);
 		case 0xBF:
 			return CP_A_r8(cpu, cpu->A);
-		case 0xE0:
-			return LDH_a8_A(cpu, fetch8(cpu));
-		case 0xF0:
-			return LDH_A_a8(cpu, fetch8(cpu));
-		case 0xE2:
-			return LDH_addr_C_A(cpu);
 		case 0xC0:
 			return RET_cc(cpu, !cpu_sm83_get_flag_z(cpu));
 		case 0xC1:
@@ -840,10 +858,20 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return JP_cc_n16(cpu, cpu_sm83_get_flag_c(cpu), fetch16(cpu));
 		case 0xDC:
 			return CALL_cc_n16(cpu, cpu_sm83_get_flag_c(cpu), fetch16(cpu));
+		case 0xE0:
+			return LDH_a8_A(cpu, fetch8(cpu));
 		case 0xE1:
 			return POP_r16(cpu, &cpu->HL);
+		case 0xE2:
+			return LDH_addr_C_A(cpu);
+		case 0xF0:
+			return LDH_A_a8(cpu, fetch8(cpu));
+		case 0xEA:
+			return LD_a16_A(cpu, fetch16(cpu));
 		case 0xF1:
 			return POP_AF(cpu);
+		case 0xFA:
+			return LDH_a16_A(cpu, fetch16(cpu));
 		case 0xFE:
 			return CP_A_n8(cpu, fetch8(cpu));
 		default:
