@@ -362,6 +362,84 @@ uint8_t ADD_A_r8(cpu_sm83 *cpu, uint8_t *r8) {
 	return 4;
 }
 
+uint8_t JP_n16(cpu_sm83 *cpu, uint16_t n16) {
+	cpu->PC = n16;
+	return 16;
+}
+
+uint8_t JP_cc_n16(cpu_sm83 *cpu, bool cc, uint16_t n16) {
+	if (!cc) return 12;
+	cpu->PC = n16;
+	return 16;
+}
+
+uint8_t POP_r16(cpu_sm83 *cpu, register_ *r16) {
+	bus_write(cpu->bus, cpu->SP++, r16->low);
+	bus_write(cpu->bus, cpu->SP++, r16->high);
+	return 12;
+}
+
+uint8_t POP_AF(cpu_sm83 *cpu) {
+	LD_r8_n8(cpu, cpu->F, bus_read(cpu->bus, cpu->SP++));
+	LD_r8_n8(cpu, cpu->A, bus_read(cpu->bus, cpu->SP++));
+
+	// Flags:
+
+	// Z
+	//     Set from bit 7 of the popped low byte.
+	// N
+	//     Set from bit 6 of the popped low byte.
+	// H
+	//     Set from bit 5 of the popped low byte.
+	// C
+	//     Set from bit 4 of the popped low byte. 
+
+	uint8_t low_byte = cpu->AF.low;
+	cpu_sm83_set_flag(cpu,
+		(low_byte >> 7) & 1,
+		(low_byte >> 6) & 1,
+		(low_byte >> 5) & 1,
+		(low_byte >> 4) & 1
+	);
+
+	return 12;
+}
+
+uint8_t RET(cpu_sm83 *cpu) {
+	uint16_t r16 = cpu->PC;
+	uint8_t low = r16 & 0xFF;
+	uint8_t high = r16 >> 8;
+
+	bus_write(cpu->bus, cpu->SP++, low);
+	bus_write(cpu->bus, cpu->SP++, high);
+
+	return 16;
+}
+
+uint8_t RET_cc(cpu_sm83 *cpu, bool cc) {
+	if (!cc) return 8;
+	(void)RET(cpu);
+	return 20;
+}
+
+uint8_t RETI(cpu_sm83 *cpu) {
+	(void)EI(cpu);
+	(void)RET(cpu);
+	return 16;
+}
+
+uint8_t CALL_n16(cpu_sm83 *cpu, uint16_t n16) {
+    bus_write(cpu->bus, --cpu->SP, n16 >> 8);
+    bus_write(cpu->bus, --cpu->SP, n16 & 0xFF);
+
+	return 24;
+}
+
+uint8_t CALL_cc_n16(cpu_sm83 *cpu, bool cc, uint16_t n16) {
+	if (!cc) return 12;
+	return CALL_n16(cpu, n16);
+}
+
 uint8_t BIT_u3_r8(cpu_sm83 *cpu, uint8_t u3, uint8_t *r8) {
 	cpu_sm83_set_flag(cpu,
 	   !(*r8 & (1 << u3)),
@@ -669,8 +747,48 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return LDH_A_a8(cpu, fetch8(cpu));
 		case 0xE2:
 			return LDH_addr_C_A(cpu);
+		case 0xC0:
+			return RET_cc(cpu, !cpu_sm83_get_flag_z(cpu));
+		case 0xC1:
+			return POP_r16(cpu, &cpu->BC);
+		case 0xC2:
+			return JP_cc_n16(cpu, !cpu_sm83_get_flag_z(cpu), fetch16(cpu));
+		case 0xC3:
+			return JP_n16(cpu, fetch16(cpu));
+		case 0xC4:
+			return CALL_cc_n16(cpu, !cpu_sm83_get_flag_z(cpu), fetch16(cpu));
+		case 0xC8:
+			return RET_cc(cpu, cpu_sm83_get_flag_z(cpu));
+		case 0xC9:
+			return RET(cpu);
+		case 0xCA:
+			return JP_cc_n16(cpu, cpu_sm83_get_flag_z(cpu), fetch16(cpu));
 		case 0xCB:
 			return run_opcode_prefix(cpu, fetch8(cpu));
+		case 0xCC:
+			return CALL_cc_n16(cpu, cpu_sm83_get_flag_z(cpu), fetch16(cpu));
+		case 0xCD:
+			return CALL_n16(cpu, fetch16(cpu));
+		case 0xD0:
+			return RET_cc(cpu, !cpu_sm83_get_flag_c(cpu));
+		case 0xD1:
+			return POP_r16(cpu, &cpu->DE);
+		case 0xD2:
+			return JP_cc_n16(cpu, !cpu_sm83_get_flag_c(cpu), fetch16(cpu));
+		case 0xD4:
+			return CALL_cc_n16(cpu, !cpu_sm83_get_flag_c(cpu), fetch16(cpu));
+		case 0xD8:
+			return RET_cc(cpu, cpu_sm83_get_flag_c(cpu));
+		case 0xD9:
+			return RETI(cpu);
+		case 0xDA:
+			return JP_cc_n16(cpu, cpu_sm83_get_flag_c(cpu), fetch16(cpu));
+		case 0xDC:
+			return CALL_cc_n16(cpu, cpu_sm83_get_flag_c(cpu), fetch16(cpu));
+		case 0xE1:
+			return POP_r16(cpu, &cpu->HL);
+		case 0xF1:
+			return POP_AF(cpu);
 		default:
 			return NONE();
 	}
