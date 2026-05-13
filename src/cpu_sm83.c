@@ -440,6 +440,43 @@ uint8_t CALL_cc_n16(cpu_sm83 *cpu, bool cc, uint16_t n16) {
 	return CALL_n16(cpu, n16);
 }
 
+uint8_t CP_A_n8(cpu_sm83 *cpu, uint8_t n8) {
+	uint8_t result = *cpu->A - (n8);
+
+	cpu_sm83_set_flag(cpu,
+		result == 0,
+		1,
+		((*cpu->A & 0xF) - (n8 & 0xF)) < 0, // borrow from bit 4
+		n8 > *cpu->A
+	);
+
+	return 8;
+}
+
+uint8_t CP_A_r8(cpu_sm83 *cpu, uint8_t *r8) {
+	(void)CP_A_n8(cpu, *r8);
+
+	return 4;
+}
+
+uint8_t CP_A_addr_HL(cpu_sm83 *cpu) {
+	uint8_t val = bus_read(cpu->bus, cpu->HL.full);
+	return CP_A_n8(cpu, val);
+}
+
+uint8_t CPL(cpu_sm83 *cpu) {
+	*cpu->A = ~(*cpu->A);
+
+	cpu_sm83_set_flag(cpu,
+		cpu_sm83_get_flag_z(cpu),
+		1,
+		1,
+		cpu_sm83_get_flag_c(cpu)
+	);
+
+	return 4;
+}
+
 uint8_t BIT_u3_r8(cpu_sm83 *cpu, uint8_t u3, uint8_t *r8) {
 	cpu_sm83_set_flag(cpu,
 	   !(*r8 & (1 << u3)),
@@ -595,6 +632,8 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return DEC_r8(cpu, cpu->E);
 		case 0x2D:
 			return DEC_r8(cpu, cpu->L);
+		case 0x2F:
+			return CPL(cpu);
 		case 0x3D:
 			return DEC_r8(cpu, cpu->A);
 		case 0x40:
@@ -741,6 +780,22 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return XOR_A_addrHL(cpu);
 		case 0xAF:
 			return XOR_A_A(cpu);
+		case 0xB8:
+			return CP_A_r8(cpu, cpu->B);
+		case 0xB9:
+			return CP_A_r8(cpu, cpu->C);
+		case 0xBA:
+			return CP_A_r8(cpu, cpu->D);
+		case 0xBB:
+			return CP_A_r8(cpu, cpu->E);
+		case 0xBC:
+			return CP_A_r8(cpu, cpu->H);
+		case 0xBD:
+			return CP_A_r8(cpu, cpu->L);
+		case 0xBE:
+			return CP_A_addr_HL(cpu);
+		case 0xBF:
+			return CP_A_r8(cpu, cpu->A);
 		case 0xE0:
 			return LDH_a8_A(cpu, fetch8(cpu));
 		case 0xF0:
@@ -789,6 +844,8 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return POP_r16(cpu, &cpu->HL);
 		case 0xF1:
 			return POP_AF(cpu);
+		case 0xFE:
+			return CP_A_n8(cpu, fetch8(cpu));
 		default:
 			return NONE();
 	}
