@@ -596,6 +596,8 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return DEC_r8(cpu, cpu->D);
 		case 0x16:
 			return LD_r8_n8(cpu, cpu->D, fetch8(cpu));
+		case 0x18:
+			return JR_e8(cpu, fetch8(cpu));
 		case 0x1A:
 			return LD_A_addr_r16(cpu, cpu->DE);
 		case 0x1B:
@@ -620,6 +622,8 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return DEC_r8(cpu, cpu->H);
 		case 0x26:
 			return LD_r8_n8(cpu, cpu->H, fetch8(cpu));
+		case 0x28:
+			return JR_cc_e8(cpu, cpu_sm83_get_flag_z(cpu), fetch8(cpu));
 		case 0x2A: {
 			uint8_t cycles = LD_A_addr_r16(cpu, cpu->HL);
 			cpu->HL.full++;
@@ -647,6 +651,8 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return INC_addr_HL(cpu);
 		case 0x35:
 			return DEC_addr_HL(cpu);
+		case 0x38:
+			return JR_cc_e8(cpu, cpu_sm83_get_flag_c(cpu), fetch8(cpu));
 		case 0x3A: {
 			uint8_t cycles = LD_A_addr_r16(cpu, cpu->HL);
 			cpu->HL.full--;
