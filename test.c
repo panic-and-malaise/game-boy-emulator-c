@@ -15,8 +15,6 @@ int main(int argc, char *argv[]) {
 	gameboy gb;
 	gameboy_init(&gb);
 
-	// cpu_tests(&gb);
-	cpu_sm83_debug_loop(gb.cpu);
 
 	// Load after boot ROM
 	char *rom_name = "roms/tetris.gb"; // again, hard-coded = bad
@@ -25,9 +23,15 @@ int main(int argc, char *argv[]) {
 		rom_name = argv[1];
 
 	printf("\n");
-	cartridge_load(gb.cart, rom_name);
+
+	gameboy_load_rom(&gb, rom_name);
+	gameboy_power_up_sequence(&gb);
+
 	// Absolutely insane and stupid, needs to be fixed
-	memcpy(gb.mmu->memory_map, gb.cart->data, gb.cart->data_size > 0x7FFF ? 0x7FFF : gb.cart->data_size); // (Also has no MBC support, just gives up instead)
+	// memcpy(gb.mmu->memory_map, gb.cart->data, gb.cart->data_size > 0x7FFF ? 0x7FFF : gb.cart->data_size); // (Also has no MBC support, just gives up instead)
+
+	// cpu_tests(&gb);
+	cpu_sm83_debug_loop(gb.cpu);
 
 	cartridge_print_header(gb.cart);
 

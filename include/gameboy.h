@@ -18,4 +18,7 @@ typedef struct {
 int gameboy_init(gameboy *gb);
 int gameboy_free(gameboy *gb);
 
+int gameboy_load_rom(gameboy *gb, const char *filename);
+int gameboy_power_up_sequence(gameboy *gb);
+
 #endif // !GAMEBOY_H

@@ -1,6 +1,7 @@
 #ifndef BUS_H
 #define BUS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 struct cpu_sm83;
@@ -11,6 +12,8 @@ typedef struct bus {
 	struct cpu_sm83 *cpu;
 	struct mmu *mmu;
 	struct ppu *ppu;
+
+	bool boot_rom_enabled;
 } bus;
 
 int bus_init(bus *bus, struct cpu_sm83 *cpu, struct mmu *mmu, struct ppu *ppu);

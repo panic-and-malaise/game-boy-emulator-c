@@ -2,6 +2,7 @@
 #include "bus.h"
 #include "register.h"
 
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -952,7 +953,6 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 
 uint8_t cpu_sm83_step(cpu_sm83 *cpu) {
 	// TODO: Fix the fact that I'm literally overriding the ROM with the bus currently...
-	// Need to split RAM and ROM, I think
 	if (cpu->ime_scheduled) {
 		cpu->ime = true;
 		cpu->ime_scheduled = false;
@@ -985,22 +985,69 @@ void debug_print_registers(cpu_sm83 *cpu) {
 }
 
 void cpu_sm83_debug_loop(cpu_sm83 *cpu) {
-	printf("CPU debug loop! Press ENTER to step forward, Q to quit, S to step to next unimplemented instruction, P to print registers!\n");
+	printf("CPU debug loop! Press ENTER to step forward, Q to quit, S to step to next unimplemented instruction, P to print registers, R to set registers!\n");
 	for (;;) {
-		char c = getchar();
-		if (c == 'q' || c == 'Q') {
-			debug_print_registers(cpu);
-			break;
-		} else if (c == 's' || c == 'S') {
-			while (cpu_sm83_step(cpu)) printf("Success!\n");
-			printf("Not implemented! ");
+		char c = tolower(getchar());
+		switch (c) {
+			case 'q':
+				debug_print_registers(cpu);
+				return;
+			case 's':
+				while (cpu_sm83_step(cpu)) printf("Success!\n");
+				printf("Not implemented! ");
+				getchar();
+				continue;
+			case 'p':
+				debug_print_registers(cpu);
+				getchar();
+				continue;
+			case 'r': {
+				char input[2];
+				uint16_t value = 0;
 
-			getchar();
-			continue;
-		} else if (c == 'p' || c == 'p') {
-			debug_print_registers(cpu);
-			getchar();
-			continue;
+				printf("Enter register : ");
+				scanf("%s = %hx", input, &value);
+
+				input[0] = toupper(input[0]);
+				input[1] = toupper(input[1]);
+
+				printf("%s = %hx\n", input, value);
+
+				switch (input[0]) {
+					case 'A':
+						*cpu->A = value;
+						break;
+					case 'B':
+						*cpu->B = value;
+						break;
+					case 'C':
+						*cpu->C = value;
+						break;
+					case 'D':
+						*cpu->D = value;
+						break;
+					case 'E':
+						*cpu->E = value;
+						break;
+					case 'H':
+						*cpu->L = value;
+						break;
+					case 'L':
+						*cpu->L = value;
+						break;
+					case 'F':
+						*cpu->F = value;
+						break;
+					case 'S':
+						cpu->SP = value;
+						break;
+					case 'P':
+						cpu->PC = value;
+						break;
+				}
+
+				continue;
+			}
 		}
 
 		bool implemented = cpu_sm83_step(cpu);
