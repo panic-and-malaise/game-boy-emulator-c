@@ -540,6 +540,11 @@ uint8_t SUB_A_n8(cpu_sm83 *cpu, uint8_t n8) {
 	return 4;
 }
 
+uint8_t RST(cpu_sm83 *cpu, uint16_t vec) {
+	(void)CALL_n16(cpu, vec);
+	return 16;
+}
+
 uint8_t BIT_u3_r8(cpu_sm83 *cpu, uint8_t u3, uint8_t *r8) {
 	cpu_sm83_set_flag(cpu,
 	   !(*r8 & (1 << u3)),
@@ -911,6 +916,10 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return CALL_cc_n16(cpu, cpu_sm83_get_flag_z(cpu), fetch16(cpu));
 		case 0xCD:
 			return CALL_n16(cpu, fetch16(cpu));
+		case 0xCE:
+			return ADC_A_n8(cpu, fetch8(cpu));
+		case 0xCF:
+			return RST(cpu, 0x08);
 		case 0xD0:
 			return RET_cc(cpu, !cpu_sm83_get_flag_c(cpu));
 		case 0xD1:
@@ -929,6 +938,8 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return JP_cc_n16(cpu, cpu_sm83_get_flag_c(cpu), fetch16(cpu));
 		case 0xDC:
 			return CALL_cc_n16(cpu, cpu_sm83_get_flag_c(cpu), fetch16(cpu));
+		case 0xDF:
+			return RST(cpu, 0x18);
 		case 0xE0:
 			return LDH_a8_A(cpu, fetch8(cpu));
 		case 0xE1:
@@ -939,12 +950,16 @@ uint8_t run_opcode(cpu_sm83 *cpu, uint8_t opcode) {
 			return LDH_A_a8(cpu, fetch8(cpu));
 		case 0xEA:
 			return LD_a16_A(cpu, fetch16(cpu));
+		case 0xEF:
+			return RST(cpu, 0x28);
 		case 0xF1:
 			return POP_AF(cpu);
 		case 0xFA:
 			return LDH_a16_A(cpu, fetch16(cpu));
 		case 0xFE:
 			return CP_A_n8(cpu, fetch8(cpu));
+		case 0xFF:
+			return RST(cpu, 0x38);
 		default:
 			return NONE();
 	}
